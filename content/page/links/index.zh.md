@@ -1,5 +1,6 @@
 ---
 title: "友链"
+layout: "links"
 showPagination: false
 readingTime: false
 links:
@@ -13,3 +14,5 @@ links:
     image: https://liuhouliang.com/avatar.jpg
 comments: false
 ---
+
+这里收录了一些值得常去看看的朋友与博客。

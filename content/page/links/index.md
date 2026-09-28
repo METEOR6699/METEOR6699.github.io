@@ -1,5 +1,6 @@
 ---
 title: "Friends"
+layout: "links"
 showPagination: false
 readingTime: false
 links:
