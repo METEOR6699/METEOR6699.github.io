@@ -127,20 +127,33 @@ body {
 
 .article-nav-card {
   min-width: 0;
-  border: 1px solid rgb(15 118 110 / 0.2);
+  border: 1px solid rgb(15 118 110 / 0.14);
   border-radius: 0.85rem;
-  background: rgb(255 255 255 / 0.82);
+  background: rgb(226 232 240 / 0.36);
   color: rgb(15 23 42) !important;
   padding: 0.85rem 1rem;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 12px 30px rgb(15 23 42 / 0.08);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 0.05);
+  transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.article-nav-card:hover {
+  border-color: rgb(8 145 178 / 0.3);
+  background: rgb(226 232 240 / 0.54);
+  box-shadow: 0 12px 28px rgb(8 145 178 / 0.08);
 }
 
 .dark .article-nav-card {
-  border-color: rgb(103 232 249 / 0.14);
-  background: rgb(15 23 42 / 0.72);
+  border-color: rgb(103 232 249 / 0.1);
+  background: rgb(15 23 42 / 0.38);
   color: rgb(226 232 240) !important;
-  box-shadow: 0 12px 30px rgb(0 0 0 / 0.18);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+}
+
+.dark .article-nav-card:hover {
+  border-color: rgb(103 232 249 / 0.26);
+  background: rgb(15 23 42 / 0.56);
+  box-shadow: 0 12px 28px rgb(8 145 178 / 0.08);
 }
 
 .article-nav-card > .text-neutral-500,
