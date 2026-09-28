@@ -12,8 +12,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   headings.forEach((heading) => {
     const link = document.createElement("a");
+    const title = heading.cloneNode(true);
+    title.querySelectorAll("a[href^='#']").forEach((anchor) => anchor.parentElement?.remove());
     link.href = `#${encodeURIComponent(heading.id)}`;
-    link.textContent = heading.textContent.replace(/^#\s*/, "").trim();
+    link.textContent = title.textContent.trim().replace(/\s+#$/, "");
     link.className = heading.tagName === "H3" ? "toc-h3" : "toc-h2";
     link.dataset.target = heading.id;
     nav.appendChild(link);
