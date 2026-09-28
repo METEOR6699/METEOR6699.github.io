@@ -1,5 +1,6 @@
 ---
 title: "属性加密通俗指南：让云上的数据「认人不认脸」"
+featureimage: "images/covers/attribute-encryption.png"
 date: 2026-08-17
 draft: false
 tags: ["密码学", "属性基加密", "ABE", "云存储", "访问控制"]

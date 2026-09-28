@@ -1,5 +1,6 @@
 ---
 title: "入门隐私计算：从一个例子看懂主要研究方向"
+featureimage: "images/covers/privacy-computing.png"
 date: 2026-09-15
 draft: false
 math: true

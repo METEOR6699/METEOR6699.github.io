@@ -1,44 +1,88 @@
-mainSections   = ["post"]
-rssFullContent = true
+colorScheme = "burufugu"
+defaultAppearance = "dark"
+autoSwitchAppearance = false
+enableSearch = true
+enableCodeCopy = true
+mainSections = ["post"]
+disableImageOptimization = false
+fingerprintAlgorithm = "sha512"
+defaultFeaturedImage = "images/covers/privacy-computing.png"
+defaultBackgroundImage = "images/site-background.png"
+backgroundCanvas = true
+thumbnailAspectRatio = "1.777"
+highlightCurrentMenuArea = true
+smartTOC = true
+smartTOCHideUnfocusedChildren = false
 
-favicon = "/favicon.svg"
+[header]
+  layout = "floating"
+  mobileMenuStyle = "dropdown"
 
 [footer]
-    since      = 2026
-    customText = "Powered by Hugo & Theme Stack"
+  showMenu = true
+  showCopyright = true
+  showThemeAttribution = true
+  showAppearanceSwitcher = true
+  showScrollToTop = true
 
-[sidebar]
-    avatar   = "/images/avatar.png"
+[homepage]
+  layout = "background"
+  showRecent = true
+  showRecentItems = 9
+  showMoreLink = true
+  showMoreLinkDest = "/post/"
+  cardView = true
+  cardViewScreenWidth = false
+  layoutBackgroundBlur = true
 
 [article]
-    math     = false
-    toc      = true
-    readingTime = true
+  showDate = true
+  showDateUpdated = true
+  showAuthor = true
+  showHero = true
+  heroStyle = "background"
+  layoutBackgroundBlur = true
+  layoutBackgroundBlurStyle = "fade"
+  layoutBackgroundHeaderSpace = true
+  showBreadcrumbs = true
+  showHeadingAnchors = true
+  showPagination = true
+  showReadingTime = true
+  showReadingProgress = true
+  showTableOfContents = true
+  showRelatedContent = true
+  relatedContentLimit = 6
+  showTaxonomies = true
+  showCategories = true
+  showTags = true
+  showWordCount = true
+  showZenMode = true
 
-    [article.list]
-        showTags = false
+[list]
+  showHero = true
+  heroStyle = "background"
+  layoutBackgroundBlur = true
+  layoutBackgroundHeaderSpace = false
+  showSummary = false
+  showCards = true
+  groupByYear = false
+  cardView = true
+  constrainItemsWidth = false
 
-    [article.license]
-        enabled = true
-        default = "Licensed under CC BY-NC-SA 4.0"
+[taxonomy]
+  showTermCount = true
+  showHero = true
+  heroStyle = "background"
+  layoutBackgroundBlur = true
+  cardView = true
 
-[widgets]
-    homepage = [
-        { type = "search" },
-        { type = "archives", params = { limit = 5 } },
-        { type = "categories", params = { limit = 10 } },
-        { type = "tag-cloud", params = { limit = 10 } },
-    ]
-    page = [{ type = "toc" }]
-
-[colorScheme]
-    toggle  = true
-    default = "auto"
-
-[comments]
-    enabled = false
+[term]
+  showHero = true
+  heroStyle = "background"
+  layoutBackgroundBlur = true
+  showTableOfContents = true
+  groupByYear = false
+  cardView = true
 
 [seo]
-    [seo.meta]
-        description = "一个关于技术与生活的个人博客"
-        keywords = ["技术博客", "隐私计算", "密码学", "Hugo", "嵌入式", "同态加密"]
+  metaDescriptionOrder = ["description", "summary", "site"]

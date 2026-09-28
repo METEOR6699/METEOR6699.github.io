@@ -1,0 +1,166 @@
+body {
+  background:
+    radial-gradient(circle at 15% 5%, rgb(8 145 178 / 0.08), transparent 34rem),
+    radial-gradient(circle at 85% 15%, rgb(124 58 237 / 0.08), transparent 32rem),
+    rgb(241 245 249);
+}
+
+.dark body {
+  background:
+    radial-gradient(circle at 15% 5%, rgb(8 145 178 / 0.12), transparent 34rem),
+    radial-gradient(circle at 85% 15%, rgb(124 58 237 / 0.12), transparent 32rem),
+    rgb(5 8 18);
+}
+
+.article-link--card {
+  border-color: rgb(15 118 110 / 0.16) !important;
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.9), rgb(241 245 249 / 0.82)) !important;
+  box-shadow: 0 18px 50px rgb(15 23 42 / 0.1), inset 0 1px rgb(255 255 255 / 0.8);
+  backdrop-filter: blur(16px);
+  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.dark .article-link--card {
+  border-color: rgb(103 232 249 / 0.14) !important;
+  background: linear-gradient(145deg, rgb(15 23 42 / 0.78), rgb(17 24 39 / 0.66)) !important;
+  box-shadow: 0 18px 50px rgb(0 0 0 / 0.2), inset 0 1px rgb(255 255 255 / 0.04);
+}
+
+.article-link--card:hover {
+  transform: translateY(-4px);
+  border-color: rgb(34 211 238 / 0.38) !important;
+  box-shadow: 0 24px 64px rgb(2 132 199 / 0.14), inset 0 1px rgb(255 255 255 / 0.06);
+}
+
+.article-link--card h2 {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.35;
+  color: rgb(15 23 42) !important;
+}
+
+.dark .article-link--card h2 {
+  color: rgb(241 245 249) !important;
+}
+
+.article-link--card .text-neutral-500,
+.article-link--card .text-neutral-400 {
+  color: rgb(71 85 105) !important;
+}
+
+.dark .article-link--card .text-neutral-500,
+.dark .article-link--card .text-neutral-400 {
+  color: rgb(148 163 184) !important;
+}
+
+.thumbnail_card::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(to top, rgb(8 15 30 / 0.35), transparent 55%);
+  pointer-events: none;
+}
+
+.toc {
+  border-left-color: rgb(34 211 238 / 0.26) !important;
+}
+
+.meteor-toc {
+  max-height: calc(100vh - 10.5rem);
+  overflow-y: auto;
+  border-left: 2px solid rgb(8 145 178 / 0.28);
+  scrollbar-width: thin;
+  scrollbar-color: rgb(8 145 178 / 0.45) transparent;
+}
+
+.meteor-toc-wrap {
+  position: sticky;
+  top: 8.75rem;
+  align-self: flex-start;
+  height: max-content;
+  width: 18rem;
+  flex: 0 0 18rem;
+}
+
+.meteor-toc a {
+  display: block;
+  padding: 0.34rem 0;
+  color: rgb(51 65 85);
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.45;
+  text-decoration: none;
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+.meteor-toc a:hover,
+.meteor-toc a.is-active {
+  color: rgb(8 145 178);
+  transform: translateX(0.2rem);
+}
+
+.dark .meteor-toc a {
+  color: rgb(203 213 225);
+}
+
+.dark .meteor-toc a:hover,
+.dark .meteor-toc a.is-active {
+  color: rgb(103 232 249);
+}
+
+.meteor-toc .toc-h3 {
+  padding-left: 0.8rem;
+  font-size: 0.86rem;
+  font-weight: 400;
+}
+
+#single_header h1 {
+  text-wrap: balance;
+  text-shadow: 0 2px 20px rgb(255 255 255 / 0.5);
+}
+
+.dark #single_header h1 {
+  text-shadow: 0 4px 30px rgb(0 0 0 / 0.5);
+}
+
+.article-nav-card {
+  min-width: 0;
+  border: 1px solid rgb(15 118 110 / 0.2);
+  border-radius: 0.85rem;
+  background: rgb(255 255 255 / 0.82);
+  color: rgb(15 23 42) !important;
+  padding: 0.85rem 1rem;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 30px rgb(15 23 42 / 0.08);
+}
+
+.dark .article-nav-card {
+  border-color: rgb(103 232 249 / 0.14);
+  background: rgb(15 23 42 / 0.72);
+  color: rgb(226 232 240) !important;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.18);
+}
+
+.article-nav-card > .text-neutral-500,
+.article-nav-card > .text-neutral-400 {
+  color: rgb(71 85 105) !important;
+}
+
+.dark .article-nav-card > .text-neutral-500,
+.dark .article-nav-card > .text-neutral-400 {
+  color: rgb(148 163 184) !important;
+}
+
+.article-nav-title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.4;
+}
+
+@media (max-width: 1023px) {
+  .meteor-toc-wrap { display: none; }
+}

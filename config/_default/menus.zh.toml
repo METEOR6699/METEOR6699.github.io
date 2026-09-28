@@ -1,0 +1,44 @@
+[[main]]
+  name = "首页"
+  pageRef = "/"
+  weight = 10
+
+[[main]]
+  name = "文章"
+  pageRef = "post"
+  weight = 20
+
+[[main]]
+  name = "分类"
+  pageRef = "categories"
+  weight = 30
+
+[[main]]
+  name = "标签"
+  pageRef = "tags"
+  weight = 40
+
+[[main]]
+  name = "友链"
+  pageRef = "page/links"
+  weight = 50
+
+[[main]]
+  name = "关于"
+  pageRef = "page/about"
+  weight = 60
+
+[[main]]
+  identifier = "search"
+  weight = 70
+  [main.params]
+    action = "search"
+    icon = "search"
+
+[[main]]
+  identifier = "appearance"
+  weight = 80
+  [main.params]
+    action = "appearance"
+    icon = "sun"
+

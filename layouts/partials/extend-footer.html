@@ -1,0 +1,32 @@
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const content = document.querySelector(".article-content");
+  const articleRow = content?.closest("section");
+  const headings = content ? [...content.querySelectorAll("h2[id], h3[id]")] : [];
+  if (!articleRow || headings.length < 2 || articleRow.querySelector(".meteor-toc-wrap")) return;
+
+  const wrap = document.createElement("aside");
+  wrap.className = "meteor-toc-wrap order-first lg:ms-auto px-0 lg:order-last lg:ps-8 lg:max-w-2xs";
+  wrap.innerHTML = `<div class="meteor-toc ps-5 pe-2 print:hidden"><p class="mb-3 text-base font-bold text-slate-800 dark:text-neutral-100">目录</p><nav aria-label="文章目录"></nav></div>`;
+  const nav = wrap.querySelector("nav");
+
+  headings.forEach((heading) => {
+    const link = document.createElement("a");
+    link.href = `#${encodeURIComponent(heading.id)}`;
+    link.textContent = heading.textContent.replace(/^#\s*/, "").trim();
+    link.className = heading.tagName === "H3" ? "toc-h3" : "toc-h2";
+    link.dataset.target = heading.id;
+    nav.appendChild(link);
+  });
+
+  articleRow.insertBefore(wrap, articleRow.firstChild);
+
+  const links = [...nav.querySelectorAll("a")];
+  const observer = new IntersectionObserver((entries) => {
+    const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+    if (!visible) return;
+    links.forEach((link) => link.classList.toggle("is-active", link.dataset.target === visible.target.id));
+  }, { rootMargin: "-18% 0px -70% 0px" });
+  headings.forEach((heading) => observer.observe(heading));
+});
+</script>

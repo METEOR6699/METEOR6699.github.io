@@ -1,0 +1,22 @@
+disabled = false
+locale = "en"
+label = "English"
+weight = 2
+title = "METEOR"
+
+[params]
+  displayName = "EN"
+  isoCode = "en"
+  rtl = false
+  dateFormat = "2 January 2006"
+  description = "A personal blog about technology and life"
+  copyright = "© 2026 METEOR"
+
+[params.author]
+  name = "METEOR"
+  image = "images/avatar.png"
+  headline = "A personal blog about technology and life"
+  bio = "Notes on technology, research, and life."
+  links = [
+    { github = "https://github.com/METEOR6699" }
+  ]

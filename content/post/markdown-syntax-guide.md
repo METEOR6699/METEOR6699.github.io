@@ -1,5 +1,6 @@
 ---
 title: "Markdown 语法速查手册"
+featureimage: "images/covers/markdown.png"
 date: 2026-07-16
 draft: false
 tags: ["Markdown", "教程", "写作"]

@@ -1,16 +1,29 @@
-baseURL                = "https://meteor0313.github.io/"
-locale                  = "zh-cn"
-title                   = "METEOR"
-theme                   = "hugo-theme-stack"
-defaultContentLanguage  = "zh"
-hasCJKLanguage          = true
+baseURL = "https://meteor6699.github.io/"
+title = "METEOR"
+theme = "blowfish"
+defaultContentLanguage = "zh"
+hasCJKLanguage = true
+enableRobotsTXT = true
+enableEmoji = true
+summaryLength = 30
 
 [pagination]
-    pagerSize = 10
+  pagerSize = 10
 
 [permalinks]
-    post = "/p/:slug/"
-    page = "/:slug/"
+  post = "/p/:slug/"
+  page = "/:slug/"
 
-[services.disqus]
-    shortname = ""
+[taxonomies]
+  tag = "tags"
+  category = "categories"
+  author = "authors"
+  series = "series"
+
+[outputs]
+  home = ["HTML", "RSS", "JSON"]
+
+[sitemap]
+  changefreq = "weekly"
+  filename = "sitemap.xml"
+  priority = 0.5

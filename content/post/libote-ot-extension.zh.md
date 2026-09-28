@@ -1,5 +1,6 @@
 ---
 title: "libOTe：不经意传输扩展库详解"
+featureimage: "images/covers/oblivious-transfer.png"
 date: 2026-07-15
 draft: false
 tags: ["密码学", "不经意传输", "MPC"]

@@ -1,5 +1,6 @@
 ---
 title: "Microsoft SEAL 入门：同态加密实战"
+featureimage: "images/covers/homomorphic-encryption.png"
 date: 2026-07-16
 draft: false
 tags: ["密码学", "同态加密", "SEAL"]

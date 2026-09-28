@@ -1,5 +1,6 @@
 ---
 title: "Vole-PSI：基于向量 OLE 的隐私集合交集"
+featureimage: "images/covers/vole-psi.png"
 date: 2026-07-14
 draft: false
 tags: ["密码学", "PSI", "隐私计算"]

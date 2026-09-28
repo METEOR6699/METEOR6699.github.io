@@ -1,5 +1,6 @@
 ---
 title: "隐私集合计算学习笔记：从基础概念到各类 PSI 协议"
+featureimage: "images/covers/private-set-intersection.png"
 date: 2026-09-19
 lastmod: 2026-09-23
 draft: false

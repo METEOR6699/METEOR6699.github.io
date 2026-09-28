@@ -1,6 +1,6 @@
 ---
 title: "友链"
-layout: "links"
+showPagination: false
 readingTime: false
 links:
   - title: Sukkk
@@ -11,10 +11,5 @@ links:
     description: Hugo Stack 主题作者
     website: https://liuhouliang.com/
     image: https://liuhouliang.com/avatar.jpg
-menu:
-    main: 
-        weight: -50
-        params:
-            icon: link
 comments: false
 ---

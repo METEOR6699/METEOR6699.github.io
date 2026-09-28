@@ -1,5 +1,6 @@
 ---
 title: "家用智能灌溉系统设计与实现"
+featureimage: "images/covers/smart-irrigation.png"
 date: 2026-07-16
 draft: false
 tags: ["嵌入式", "STM32", "智能家居", "物联网"]

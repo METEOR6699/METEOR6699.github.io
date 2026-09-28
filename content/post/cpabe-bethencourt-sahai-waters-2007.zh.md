@@ -1,5 +1,7 @@
 ---
 title: "CP-ABE：密文策略属性基加密（Bethencourt-Sahai-Waters 2007）"
+featureimage: "images/covers/cp-abe.png"
+showTableOfContents: true
 date: 2026-08-17
 draft: false
 tags: ["密码学", "属性基加密", "ABE", "访问控制"]

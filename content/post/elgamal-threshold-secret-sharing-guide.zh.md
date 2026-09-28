@@ -1,5 +1,6 @@
 ---
 title: "从 ElGamal 到门限秘密共享：一篇看懂分布式解密、DKG 与门限签名的教程"
+featureimage: "images/covers/threshold-cryptography.png"
 date: 2026-08-30
 draft: false
 math: true

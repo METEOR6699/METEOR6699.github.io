@@ -1,5 +1,6 @@
 ---
 title: "从哈希到可编辑区块链：把区块链的核心概念讲明白"
+featureimage: "images/covers/redactable-blockchain.png"
 date: 2026-09-15
 draft: false
 math: true
