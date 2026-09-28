@@ -7,7 +7,7 @@ links:
   - title: Sukkk
     description: 晓看天色暮看云
     website: https://sukkk-zcy.github.io/
-    image: https://sukkk-zcy.github.io/favicon.ico
+    image: /images/friends/sukkk.jpg
 comments: false
 ---
 
