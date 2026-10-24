@@ -2,17 +2,18 @@
 title: "UPSI 论文复现实验手册：从 WSL2 环境到规模、带宽与结果统计"
 slug: "upsi-reproduction-wsl2"
 date: 2026-10-24
+lastmod: 2026-10-24
 draft: false
 math: true
 tags: ["PSI", "UPSI", "APSI", "论文复现", "WSL2", "Bazel"]
 categories: ["隐私计算"]
-description: "逐步复现 Efficient Updatable PSI from Asymmetric PSI and PSU：解释源码、JSON、编译、网络模拟、组件调用、日志和统计口径，附完整命令与参数切换方法。"
+description: "逐步复现 Efficient Updatable PSI from Asymmetric PSI and PSU：讲清 Bazel、YACL、RR22 与 APSI 的分工，解释预先建库与更新求交，附环境、编译、规模和网络测试命令。"
 featureimage: "images/covers/privacy-computing.png"
 ---
 
 这篇文章记录论文 **Efficient Updatable PSI from Asymmetric PSI and PSU** 的一次本地复现过程。目标是弄清楚实验如何运行、每个数字从哪里来，并在相近参数下比较规模和网络变化的影响。
 
-本文采用 **Windows＋WSL2＋Ubuntu 22.04＋作者的 YACL 分支及 UPSI 源码**，以 **KRTW PSU＋BRPC** 为主线。安装、编译、执行和归档的命令都写出执行位置，并解释关键参数。
+本文采用 **Windows＋WSL2＋Ubuntu 22.04＋作者的 YACL 分支及 UPSI 源码**，以 **KRTW PSU＋BRPC** 为主线。安装、编译和执行的命令都写出执行位置，并解释关键参数。
 
 先明确复现范围：论文在 CentOS 工作站的两个 Docker 容器中模拟两方；本文使用单个 WSL 环境，由示例程序在同一进程中并发模拟两方。两者硬件、调度和部分计时边界存在差异。**跑通相同协议和实验网格，不等于得到与论文完全一致的秒数，也不等于完成了安全性证明。** 本文不声称已复现论文的全部对比协议。
 
@@ -53,7 +54,7 @@ $$
 
 论文说明初始化只需执行一次，后续更新性能不再计入这部分成本。**论文并没有写出日志字段名，也没有直接写出“Setup time＋Base PSI time”这条代码公式。** 这个加法是根据本版源码计时段建立的本地统计口径。
 
-其中 `Setup` 在本版示例里先后建立两方 APSI 数据库；它不是论文两容器并行运行的精确镜像。因此，把二者之和列入本地初始化表是可解释的，但不能据此断言它与论文的端到端初始化计时完全相同。
+其中 `Setup` 在本版示例里先后建立两方 APSI 数据库，目的是为后续更新准备大集合查询状态；初始交集仍由 RR22 计算。它不是论文两容器并行运行的精确镜像。因此，把二者之和列入本地初始化表是可解释的，但不能据此断言它与论文的端到端初始化计时完全相同。
 
 ### 1.3 网络条件
 
@@ -82,6 +83,8 @@ $$
 
 UPSI 的原始大集合规模可能相同，例如双方都是一百万；但**每一轮的小规模新增集合与对方的大集合求交**，正是适合 APSI 的子问题。双方在整个协议中也不必永远保持同一个 sender/receiver 身份。
 
+要区分两件事：**初始化时建立 APSI 数据库，更新时才调用 APSI 查询求交。** 建库是把自己的大集合预处理成以后可查询、可增删的状态，并不产生双方的初始交集。初始交集通过另外的 RR22 基础 PSI 获得。
+
 本实验的依赖声明锁定 Microsoft **APSI v0.11.0**，并由作者 YACL 分支应用兼容补丁。不要拿最新 APSI 的接口或参数格式直接替换这版依赖。[对应版本说明](https://github.com/microsoft/APSI/tree/v0.11.0)
 
 ### 2.2 OPRF、同态加密和 SenderDB
@@ -89,7 +92,7 @@ UPSI 的原始大集合规模可能相同，例如双方都是一百万；但**�
 - **OPRF**：不经意伪随机函数。查询方可获得自身输入的伪随机函数值，另一方处理请求时不直接看到这些明文输入。它不是给输入简单做一次普通哈希。
 - **同态加密**：允许对密文做特定运算，解密结果对应明文计算。这里由 Microsoft SEAL 提供 BFV 方案相关能力。
 - **BFV**：适用于模整数运算的同态加密方案。APSI 利用批处理、多项式计算等技术完成匹配。
-- **SenderDB**：APSI 发送方预处理后的数据库。初始化时建立，集合变动时增删；它是内存中的协议对象，不代表必须安装 MySQL 等数据库软件。
+- **SenderDB**：APSI 发送方预处理后的数据库。初始化时装入自己的完整集合，集合变动时在已有数据库上增删，供后续 APSI 查询使用；建库本身不计算双方交集。它是内存中的协议对象，不代表必须安装 MySQL 等数据库软件。
 - **哈希分桶、bin**：把大量元素安排到多个桶，降低每个桶的匹配计算规模。
 - **噪声预算**：同态密文支持计算的资源之一。运算会消耗预算；不是 Windows 内存，也不能靠任意缩小密码参数来节约资源。
 
@@ -118,26 +121,64 @@ KRTW 名称来自 Kolesnikov、Rosulek、Trieu、Wang 等作者的姓氏缩写�
 
 **JSON** 是文本数据格式。本实验中它保存 APSI 算法参数，程序启动后读取。它不是 Linux 命令，也不需要单独“运行 JSON”。
 
+### 2.5 Bazel：负责把代码构建成程序
+
+**Bazel 是构建和测试工具。** 在这个实验里，它读取项目的构建规则和依赖关系，安排下载依赖、调用 C++ 编译器和链接器，最后生成 `upsi`。它不执行 PSI 算法，也不在实验运行时决定交集。
+
+几个容易混淆的名字可以这样对应：
+
+| 名称 | 是什么 | 本实验中的作用 |
+|---|---|---|
+| Bazelisk | Bazel 的版本启动器 | 根据 `USE_BAZEL_VERSION=7.4.1` 找到并启动指定 Bazel |
+| Bazel | 构建调度工具 | 根据规则组织编译、依赖构建和链接 |
+| GCC / `g++` | C++ 编译器 | 把 C++ 源码编译为目标文件，再由相关工具链接 |
+| `WORKSPACE` | 本版项目的工作区入口 | 声明工作区并引入外部依赖配置 |
+| `BUILD.bazel` | 目录中的构建规则 | 指定 `upsi` 由哪些源码和库构成 |
+| `.bazelrc` | Bazel 选项配置 | 保存优化选项、`--config=one` 等配置 |
+
+例如命令 `bazel build //examples/upsi:upsi` 中，前面的 `bazel` 是工具，后面的 `//examples/upsi:upsi` 是要构建的**目标**。Bazel 会顺着该目标的依赖关系构建 YACL 模块及 APSI 等库，再生成 `bazel-bin/examples/upsi/upsi`。它不是把某一张实验表“编译进去”。
+
+Bazel 会缓存已完成的构建工作：改 `main.cc` 后，只需重建受影响的部分；换网络时没有改 C++，可以用 `--skip-build` 直接运行原程序。构建中的 `--jobs=2` 也不是 APSI 运行时的线程数。[Bazel 官方介绍](https://bazel.build/about/intro)
+
+### 2.6 YACL：程序实际使用的密码与通信基础库
+
+**YACL 是 Yet Another Common crypto Library，一个 C++ 基础库。** 它提供密码学构件、数据类型、网络通信、I/O 等能力；本文使用作者维护的 YACL 分支，而非直接用上游最新版替换。
+
+在本实验中，作者的 UPSI 代码位于 `yacl/examples/upsi`，会调用 YACL 的功能：
+
+- 用 `uint128_t` 等类型表示实验元素，用随机数、哈希等工具构造或处理数据。
+- 用 `yacl::link::Context` 表示通信端点，协议通过链路发送和接收消息，并读取通信量统计。
+- 使用并行工具和底层密码学组件，支撑 RR22、PSU 及适配代码。
+- 通过 `yacl_link_channel.h`，让 APSI 的消息进入本实验使用的 YACL 链路；`--link=brpc` 时由 BRPC 后端承载相应通信。
+
+这些调用可从本版 `main.cc`、`upsi.cc`、`aPSI.h` 和 `BUILD.bazel` 核对。YACL 本身不是另一个需要在终端手工启动的 `yacl` 服务；相关模块经构建后成为 `upsi` 程序所依赖的代码。[YACL 上游项目说明](https://github.com/secretflow/yacl)
+
+因此两者的分工是：**Bazel 负责把程序构建出来；YACL 提供程序运行时会调用的基础能力。** 作者把 RR22、APSI 和 KRTW PSU 组合成 UPSI，Bazel 再根据构建规则把这些代码及其依赖构建为可执行程序。
+
 ## 3. 各组件怎样一起工作
 
 ### 3.1 从一条命令到一组结果
 
 {{< mermaid >}}
 flowchart TD
-    A[run_benchmarks.sh 参数解析] --> B[建立隔离网络命名空间]
-    B --> C[network_setup.sh 调用 tc/netem]
-    C --> D[启动已编译的 upsi]
-    J[APSI JSON 参数] --> D
-    D --> E[Setup: 建立双方 APSI 数据库]
-    E --> F[Base PSI: RR22 计算初始交集]
-    F --> G[检查双方交集与预期结果]
-    G --> H[每轮: 数据库增删 + APSI 查询 + KRTW PSU]
-    H --> I[校验更新交集并打印指标]
-    I --> K[逐次日志 + details.tsv]
-    K --> L[summary.tsv 和 summary.md]
+    A[run_benchmarks.sh 解析实验参数] --> B[隔离网络内设置 tc/netem]
+    B --> D[启动已编译的 upsi]
+    D --> E[Setup: 用初始 X 和 Y 建立 APSI 数据库]
+    J[APSI JSON 参数] --> E
+    E -->|源码接下来执行| F[Base PSI: RR22 直接对 X 和 Y 求交]
+    F --> G[保存并校验初始交集 I0]
+    E -. 保留供后续查询使用 .-> S[(两方 APSI 数据库状态)]
+    G --> H[新一轮: 按新增和删除批次修改数据库]
+    S --> H
+    H --> Q[APSI: 新增小集合与对方更新后的大集合求交]
+    Q --> P[KRTW PSU 合并更新信息并更新旧交集]
+    P --> I[校验更新交集并输出日志]
+    I --> K[逐次记录与汇总文件]
 {{< /mermaid >}}
 
 构建是图外的准备工作：Bazel 先把 C++ 源码和依赖生成 `upsi`。使用 `--skip-build` 后，批量脚本只启动现有程序，不再构建。
+
+图中“建库 → RR22”的实线表示本版源码的执行顺序，**不表示 RR22 要以 APSI 数据库为输入**。RR22 接收的是原始集合 `X`、`Y`；虚线表示 APSI 数据库状态要保留，供后续更新使用。
 
 ### 3.2 程序内部的阶段
 
@@ -148,22 +189,26 @@ flowchart TD
     ↓
 Setup 计时开始
     建立 instanceX、instanceY 两个 APSI 对象
-    把初始集合插入两方 SenderDB
+    把初始集合插入两方 SenderDB，预备后续更新查询
+    此时还没有通过 APSI 计算双方交集
 Setup 计时结束
     ↓
 建立 YACL 链路，将 APSI Channel 适配到该链路
     ↓
 Base PSI 计时开始
-    并发执行 RR22 发送方与接收方
+    并发执行 RR22 发送方与接收方，输入为 X 和 Y
+    得到并保存初始交集 I0，不读取 APSI 数据库来求交
 Base PSI 计时结束
     检查双方初始交集，打印基础通信量
     ↓
 对每一轮更新：
     构造新增/删除测试数据
     UPSI 本轮计时开始
-        修改双方 APSI 数据库
-        执行双向 APSI 查询
-        执行 KRTW PSU，合并更新信息
+        在已有 APSI 数据库中删除旧元素、插入新元素
+        执行双向 APSI 查询，处理新增小集合的匹配
+        执行新增相关的 KRTW PSU，合并新增交集
+        从旧交集中提取删除相关信息
+        执行删除相关的 KRTW PSU，合并需移除的信息
         更新双方保存的交集
     UPSI 本轮计时结束
     检查双方结果与预期交集
@@ -176,7 +221,56 @@ Base PSI 计时结束
 
 本版测试数据由程序生成，不用先准备 CSV 数据集。新增、删除批次也是为测试构造的；它们不能代表所有真实业务的数据分布。
 
-### 3.3 为什么不能把每个组件当独立软件依次启动
+### 3.3 为什么先建 APSI 数据库，初始交集却用 RR22
+
+因为初始化要为以后准备**两类状态**，职责不同：
+
+| 初始化工作 | 准备的状态 | 后续用途 |
+|---|---|---|
+| 将自己的初始集合插入 APSI 的 SenderDB | `DB_X`、`DB_Y`，即两方大集合的可查询表示 | 集合变化时增删，再回答小规模新增集合的 APSI 查询 |
+| 对初始集合执行 RR22 基础 PSI | 双方保存的初始交集 `I0` | 更新时在旧交集上删除失效匹配、加入新匹配 |
+
+**建立数据库不等于执行一次 APSI 求交。** 可以把它理解为先把一本大字典整理好，等后续拿着少量新词来查；整理字典并不等于已经比较了双方的全部词汇。
+
+本版源码先建库，再执行 RR22，是实现选择的先后顺序。决定谁计算初始交集的，是调用了哪个求交函数，而不是哪种数据库先建立。
+
+下面摘取 `RunUPSIv1` 的关键调用，省略链路建立、计时和校验细节。它用于理解调用关系，不是一段可独立编译的完整程序：
+
+```cpp
+// 1. 为以后准备 APSI 大集合状态；这几行不产生双方交集。
+APSI instanceX(ResolveParamsPath("1M-1024-com.json"));
+APSI instanceY(ResolveParamsPath("1M-1024-com.json"));
+instanceX.insertItems(X);
+instanceY.insertItems(Y);
+
+// 2. 初始交集由基础 PSI 完成，两方需要并发执行。
+// BasePsiSend / BasePsiRecv 内部调用 RR22PsiSend / RR22PsiRecv。
+auto rr22_sender = std::async(std::launch::async, [&] {
+  return BasePsiSend(lctxs[0], X, baxos);
+});
+auto rr22_receiver = std::async(std::launch::async, [&] {
+  return BasePsiRecv(lctxs[1], Y, baxos);
+});
+auto initial_sender = rr22_sender.get();
+auto initial_receiver = rr22_receiver.get();
+
+// 3. 更新轮先维护已有数据库，不重新从全部 N 个元素建库。
+instanceX.deleteItems(batch.sub_items);
+instanceX.insertItems(batch.add_items);
+instanceY.deleteItems(batch.sub_items);
+instanceY.insertItems(batch.add_items);
+
+// 随后进入 UPsiSendV1 / UPsiRecvV1：APsiRun 处理新增项查询，
+// PsuSend / PsuRecv 合并更新信息，结合旧交集生成新交集。
+```
+
+例如 N 约一百万、Nu 为 1024：初始化先把各自一百万元素预处理进数据库；RR22 再获得初始交集。下一轮每方删除、插入各 1024 个元素时，程序修改已有数据库，然后让新增小集合与对方更新后的大集合执行 APSI 查询，配合 PSU 更新旧交集。
+
+如果等每轮更新时才从零建立这两个数据库，就会反复处理完整大集合，失去复用预处理状态的意义。因此，Setup 阶段建库的目的很明确：**提前准备未来查询用的状态，初始全量求交仍由传统 PSI 的 RR22 完成。**
+
+还有一个区别：数据库删除是本地状态维护；更新协议中的删除处理还要利用旧交集和 PSU。不能把“APSI 数据库里删除了元素”理解为双方交集已经自动完成同步更新。
+
+### 3.4 为什么不能把每个组件当独立软件依次启动
 
 执行 `upsi` 后，RR22、APSI、PSU 是由 C++ 函数调用连接的。SEAL、libOTe 等依赖经 Bazel 构建并链接，某些对象是程序内部的状态。
 
@@ -705,108 +799,7 @@ JSON 里的 `table_size=1364` 不是 N，也不是 Nu。文件中没有直接写
 
 这些字段共同组成密码学参数，不能只为变快而任意降低。若 Nu 增大时换了 JSON，即同时改变了更新工作量和算法参数；时间不必单调增长。要验证规模影响，应固定同一 JSON 做对照，并说明该参数对查询规模的适用边界。
 
-## 10. 不同规模的程序如何共存，而不重复保存脚本
-
-同一个工作区的 `bazel-bin/examples/upsi/upsi` 会指向当前构建产物。重新构建另一规模后，它不能自动保留旧规模的可执行文件。
-
-采用以下结构：每种配置只保存自己的程序、JSON 和来源记录；两个脚本只保留一份，其他目录通过符号链接引用。
-
-```text
-~/psi-paper/saved-runs/
-├── shared/
-│   ├── run_benchmarks.sh
-│   └── network_setup.sh
-├── N20_Nu9_构建时间/
-│   ├── bazel-bin/examples/upsi/upsi
-│   ├── examples/upsi/
-│   │   ├── parameters/1M-512-com.json
-│   │   ├── run_benchmarks.sh -> shared中的脚本
-│   │   └── network_setup.sh -> shared中的脚本
-│   ├── source.diff
-│   ├── main.cc.snapshot
-│   └── SHA256SUMS
-└── N20_Nu10_构建时间/
-    └── 同样结构，但程序和JSON属于自己的配置
-```
-
-### 10.1 保存一份刚刚编译成功的程序
-
-下面以 **N20_Nu10** 为例；如果刚构建的是其他规模，先改 `tag` 和 `param`，并检查源码 diff。不要把它当成自动切换规模的命令。
-
-```bash
-cd ~/psi-paper/yacl
-
-tag=N20_Nu10
-param=1M-1024-com.json
-archive="$HOME/psi-paper/saved-runs/${tag}_$(date +%Y%m%d_%H%M%S)"
-shared="$HOME/psi-paper/saved-runs/shared"
-
-mkdir -p "$shared"
-
-# 首次创建共用脚本；已有时不覆盖，以免影响旧归档。
-for script in run_benchmarks.sh network_setup.sh; do
-  if [ ! -e "$shared/$script" ]; then
-    cp "examples/upsi/$script" "$shared/$script"
-  fi
-done
-chmod +x "$shared/"*.sh
-
-mkdir -p "$archive/bazel-bin/examples/upsi"
-mkdir -p "$archive/examples/upsi/parameters"
-
-cp -L bazel-bin/examples/upsi/upsi \
-  "$archive/bazel-bin/examples/upsi/upsi"
-cp "examples/upsi/parameters/$param" \
-  "$archive/examples/upsi/parameters/$param"
-
-ln -s "$shared/run_benchmarks.sh" "$archive/examples/upsi/run_benchmarks.sh"
-ln -s "$shared/network_setup.sh" "$archive/examples/upsi/network_setup.sh"
-
-git -C examples/upsi diff -- main.cc > "$archive/source.diff"
-cp examples/upsi/main.cc "$archive/main.cc.snapshot"
-git rev-parse HEAD > "$archive/yacl.commit"
-git -C examples/upsi rev-parse HEAD > "$archive/upsi.commit"
-
-printf 'tag=%s\nparameter=%s\n' "$tag" "$param" > "$archive/config.txt"
-
-(
-  cd "$archive"
-  sha256sum bazel-bin/examples/upsi/upsi \
-    "examples/upsi/parameters/$param" > SHA256SUMS
-)
-
-printf '保存位置：%s\n' "$archive"
-```
-
-`cp -L` 会复制链接指向的实际二进制，避免归档仍引用之后会变化的 Bazel 输出。`ln -s` 只创建链接；删除某个归档中的链接不会删除共享脚本。
-
-目录保留 `examples/upsi` 和 `bazel-bin/examples/upsi` 的相对关系，是因为作者脚本会从自身目录向上两层查找运行根目录。把所有文件随意平铺到一个目录会破坏这个约定。
-
-脚本共用的前提是版本不变。若以后修改共享脚本，旧归档也会受到影响；应另建版本化的 shared 目录，并记录脚本哈希。归档程序主要供同一机器继续使用，本版构建含 `-march=native`，不能假定复制到任意 CPU 都能直接运行。
-
-### 10.2 直接重用保存的规模
-
-上一段命令执行后，当前 Shell 仍保留 `$archive` 变量：
-
-```bash
-cd "$archive"
-sha256sum -c SHA256SUMS
-
-cd examples/upsi
-
-./run_benchmarks.sh \
-  --backends=krtw \
-  --scenarios=LAN,WAN_200Mbps,WAN_50Mbps,WAN_5Mbps \
-  --repeats=3 \
-  --update-count=1 \
-  --link=brpc \
-  --skip-build \
-  --output-dir="/mnt/f/PSI-results/UPSI/${tag}_$(date +%Y%m%d_%H%M%S)"
-```
-
-重新开终端后先用 `ls ~/psi-paper/saved-runs` 查具体目录，再 `cd` 进去，不要依赖已经丢失的 Shell 变量。归档目录不含完整 Bazel 工作区，运行时应保留 `--skip-build`。
-
-## 11. 每一类输出文件怎么读
+## 10. 每一类输出文件怎么读
 
 一批运行完后大致得到：
 
@@ -846,112 +839,7 @@ less "$out_dir/runs/krtw_LAN_run1.log"
 
 `less` 按 `q` 退出。`$'\t'` 是 Bash 中表示制表符的写法；双引号保护含空格的目录变量。
 
-### 11.1 加一份配置说明，防止日后不知道测了什么
-
-作者原始结果不自动把所有规模配置写成独立 manifest，建议在每批实验后附上：
-
-```bash
-cd ~/psi-paper/yacl
-
-{
-  date --iso-8601=seconds
-  uname -a
-  nproc
-  free -h
-  bazel --version
-  git rev-parse HEAD
-  git -C examples/upsi rev-parse HEAD
-  git -C examples/upsi diff -- main.cc
-  sha256sum bazel-bin/examples/upsi/upsi
-  sha256sum examples/upsi/parameters/1M-1024-com.json
-} > "$out_dir/configuration.txt"
-
-cp examples/upsi/parameters/1M-1024-com.json "$out_dir/"
-```
-
-这里以 N20_Nu10 的 JSON 举例，其他规模要改文件名，并确认 `$out_dir` 是刚才那批真实输出目录。若运行的是归档程序，应从归档复制 `config.txt`、`source.diff`、`SHA256SUMS` 和 JSON，不要记录当前主工作区另一个规模的程序哈希。
-
-这类配置说明记录环境和输入，统计均值仍以原始逐次记录为依据。**作者脚本不会自动更新本文讨论的个人 XLSX 汇总表。** 自动写 XLSX 需要另一个导入、匹配配置与去重流程，不能以为 `--output-dir` 顺便做了这件事。
-
-## 12. 时间、通信量、均值和 Std 如何解释
-
-### 12.1 几个日志字段的边界
-
-| 字段 | 这版程序测量的内容 | 不包括什么 |
-|---|---|---|
-| `Setup time` | 顺序创建两方 APSI 对象、插入初始集合的计时段 | 初始 RR22、后续更新；也不是整个进程启动到就绪的全部时间 |
-| `Base PSI time` | 双方 RR22 基础求交并发执行到完成的计时段 | 前面的 APSI 建库，以及后面的更新 |
-| `Base PSI Total Communication` | 初始阶段所选一方 YACL 链路发送字节＋接收字节 | 不能再与另一方同一流量重复相加 |
-| `UPSI time` | 所有更新轮计时段之和，包含本版数据库增删与更新协议 | 初始化阶段；最终交集校验等也不全部包含在计时段内 |
-| `UPSI Total Communication` | 更新前后链路统计差值，累加所选一方发送＋接收 | 不是以太网抓包层面的全部包头、重传和内核开销 |
-
-所以，`Base PSI time` 可以称为“这次 LAN/WAN 条件下，基础 RR22 求交计时段的耗时”，但不能叫“包含 Setup 的完整 RR22＋UPSI 总运行时间”。
-
-本版源码用 `bytes / (1024 * 1024)`，虽然打印 `MB`，数值严格说是 **MiB**。本地表格应写 MiB，或明确注明单位口径；论文表头写 MB，比较时应核实双方定义，不要直接假定完全一致。
-
-### 12.2 表格建议怎样排
-
-初始化表按 N 保留一份明确的代表配置：
-
-```text
-N | 代表配置 | 通信(MiB) | LAN初始化(s) | WAN200(s) | WAN50(s) | WAN5(s) | 状态 | JSON
-```
-
-更新表按 N、Nu 排行：
-
-```text
-N | Nu | 更新通信(MiB) | LAN更新(s) | WAN200(s) | WAN50(s) | WAN5(s) | 状态 | JSON
-```
-
-初始化时间采用本地 `Setup＋Base PSI`，更新时间采用一轮的 `UPSI time`。每行状态保留“失败几次”“哪种网络只有几次有效”“特殊参数”等有用说明。
-
-同一 N 的初始化通信通常接近，因为主要依赖基础求交的大集合规模。论文也把初始化成本按 N 展示。但本地换 Nu 时若连带换了 APSI 参数，Setup 的计算、内存和构造成本仍可能变化；不能把“论文按 N 分类”理解为“源码里所有 Setup 实测值严格相等”。
-
-更新通信可能因随机性、输入内容等有小幅波动。若为接近论文布局只展示一列，应注明取哪个网络的均值，本次采用 **LAN 均值**；保留各网络的原始通信记录，不要先假设完全相等再丢弃。
-
-### 12.3 均值和 Std
-
-三次成功运行的时间为 $t_1,t_2,t_3$，均值为：
-
-$$
-\bar t=\frac{t_1+t_2+t_3}{3}.
-$$
-
-**Std 是 standard deviation，标准差**，表示重复运行的波动。本版脚本使用总体形式：
-
-$$
-\sigma=\sqrt{\frac1m\sum_{i=1}^m(t_i-\bar t)^2}.
-$$
-
-它不是除以 $m-1$ 的样本标准差。只有一次成功时算出 Std＝0，只说明没有多次样本可观察波动，不代表实验没有误差。
-
-脚本均值只使用 `status=OK` 的运行。三次中两次成功一次失败，应报告“2 次有效、1 次失败”，不能把失败记作 0 秒再平均。没有成功样本时填 `NA/n.a.`；尚未开展的配置填“未测”。
-
-## 13. 怎样确认运行成功，而不被脚本结束误导
-
-运行结束写出了 `summary.md`，只说明批量脚本完成了整理，不代表内部程序全部成功。
-
-一次可信的成功记录至少要核对：
-
-1. `details.tsv` 中该次 `status=OK`、`exit_code=0`。
-2. 逐次日志打印的 N、增删规模、PSU 后端、link 与目标一致。
-3. 初始 PSI 双方的预期交集检查通过。
-4. 每轮 UPSI 双方的预期交集检查通过。
-5. 完整打印更新耗时、通信量；不是只有初始化数据。
-
-检查单次日志：
-
-```bash
-log_file="$out_dir/runs/krtw_LAN_run1.log"
-
-grep -E 'PSU backend:|Link backend:|X\^|\|X\||update_count:' "$log_file"
-grep -F 'expected intersection check passed.' "$log_file"
-tail -n 25 "$log_file"
-```
-
-这里 Ubuntu 默认未必安装 `rg`，因此用系统常见的 `grep`。一轮更新成功时，通常能看到两条初始检查和两条更新检查。多轮应每轮都有双方检查，不能只数固定四条。
-
-### 13.1 常见故障各意味着什么
+## 11. 常见故障各意味着什么
 
 | 现象 | 能确认什么 | 不能直接断言什么 |
 |---|---|---|
@@ -963,11 +851,11 @@ tail -n 25 "$log_file"
 | `Operation not permitted`（unshare/tc） | 当前系统不允许相应命名空间／网络操作 | 不是已经成功施加论文网络条件 |
 | `GnuTLS recv error` / HTTP/2 clone 失败 | 下载连接异常 | 与实验算法正确性不是同一个问题 |
 
-## 14. 大规模、线程和崩溃文件：本机遇到的问题
+## 12. 大规模、线程和崩溃文件：本机遇到的问题
 
 论文工作站是 Xeon Gold 6230R、52 核、128 GB RAM；本次笔记本及 WSL 的可用资源明显更少。大规模不应一开始就全部排队，先确认较小规模的流程、内存和日志。
 
-### 14.1 APSI 单线程指什么
+### 12.1 APSI 单线程指什么
 
 原始主程序使用：
 
@@ -987,7 +875,7 @@ ThreadPoolMgr::SetThreadCount(1);
 
 线程数改变后要重新构建并另存配置，不能把这组数据直接混入原来四线程条件的时间均值。
 
-### 14.2 控制失败时的磁盘占用
+### 12.2 控制失败时的磁盘占用
 
 本机曾出现 WSL 将大体积崩溃转储写入 Windows 临时目录的情况；仅 `ulimit -c 0` 在采用管道捕获转储的环境中不一定足够。
 
@@ -1023,7 +911,7 @@ ulimit -c 0
 
 本次 N=$2^{22}$、Nu=$2^{12}$ 的探索未得到可用的更新结果，后来按整理要求删除失败产物并在当前汇总中标为“未测”；Nu=$2^{13}$ 没有实际完成测试。这里的“未测”是当前结果表的展示规则，不表示历史上从未尝试过前一组。
 
-## 15. 从头到尾的执行顺序清单
+## 13. 从头到尾的执行顺序清单
 
 | 顺序 | 要做的事 | 完成后检查什么 |
 |---:|---|---|
@@ -1036,13 +924,13 @@ ulimit -c 0
 | 7 | 在 YACL 根目录编译 | `Build completed successfully` |
 | 8 | LAN 一次功能验证 | 退出码 0，初始和更新双方交集检查通过 |
 | 9 | 同规模四网络各三次 | 12 次记录、成功数和失败数明确 |
-| 10 | 保存程序、JSON、提交、diff 和哈希 | 后续能确认旧程序属于哪个配置 |
-| 11 | 改下一规模，重新构建与归档 | 不误用旧二进制，不重复复制共享脚本 |
+| 10 | 记录程序实际规模、JSON 与网络配置 | 目录标签与实际参数一致 |
+| 11 | 改下一规模并重新构建 | 不误用上一规模的旧二进制 |
 | 12 | 用逐次记录汇总到两类表格 | 只对成功样本算均值，保留失败状态和JSON |
 
 已经完成安装、克隆和编译的人，不必从第一条再跑。回到自己的实际进度，先核实当前源码与程序的配置，再继续对应步骤。
 
-## 16. 进一步读源码，先看哪里
+## 14. 进一步读源码，先看哪里
 
 建议按照“实验控制 → 协议组合 → 底层组件”的顺序阅读：
 
@@ -1060,6 +948,8 @@ ulimit -c 0
 - [作者 UPSI 固定提交](https://github.com/ShallMate/upsi/tree/e3dd3731f29c791d686c464f6fe48979db025130)：本文的 `main.cc`、`upsi.cc`、APSI 包装、参数文件和脚本依据。
 - [作者 YACL 固定提交](https://github.com/ShallMate/yacl/tree/46d6137b297d9ac09fcb8401ddd89e705bcba175)：工作区、Bazel 构建配置和依赖声明。
 - [APSI v0.11.0](https://github.com/microsoft/APSI/tree/v0.11.0)：与本次构建对应的接口与参数背景，避免混用新版本文档。
+- [Bazel 官方介绍](https://bazel.build/about/intro)：构建工具、依赖与缓存的基本概念。
+- [YACL 上游项目](https://github.com/secretflow/yacl)：库的定位和模块说明；实际实验仍以作者的固定分支提交为准。
 - [Bazelisk v1.22.1](https://github.com/bazelbuild/bazelisk/releases/tag/v1.22.1)：文中启动器下载版本。
 - [WSL 基础命令](https://learn.microsoft.com/en-us/windows/wsl/basic-commands)、[WSL 网络访问说明](https://learn.microsoft.com/en-us/windows/wsl/networking)：Windows 与 Linux 环境及网络配置。
 
