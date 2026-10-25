@@ -2,7 +2,7 @@
 title: "UPSI 论文复现实验手册：从 WSL2 环境到规模、带宽与结果统计"
 slug: "upsi-reproduction-wsl2"
 date: 2026-10-24
-lastmod: 2026-10-24
+lastmod: 2026-10-25
 draft: false
 math: true
 tags: ["PSI", "UPSI", "APSI", "论文复现", "WSL2", "Bazel"]
@@ -44,7 +44,7 @@ $$
 
 ### 1.2 论文表一、表二各测什么
 
-论文第 VI-A 节列出实验环境，第 VI-C 节及表 I、表 II 分别描述初始化与更新成本。[论文入口](https://ieeexplore.ieee.org/document/11361182)
+论文第 V-A 节列出实验环境，第 V-C 节及表 I、表 II 分别描述初始化与更新成本（PDF 第 10 页、论文页码 2635 的左栏解释初始化范围）。[论文入口](https://ieeexplore.ieee.org/document/11361182)
 
 | 项目 | 论文中的含义 | 本地记录时如何对应 |
 |---|---|---|
@@ -551,6 +551,44 @@ git -C ~/psi-paper/yacl/examples/upsi rev-parse HEAD
 git -C ~/psi-paper/yacl/examples/upsi status --short
 ```
 
+### 5.6 先口述一遍：从编译到实验结果
+
+在开始输入下一节的编译命令之前，先把整个实验连起来理解：**先确认规模和配置，编译生成 `upsi` 程序；再运行脚本，由脚本设置网络、启动程序、重复测量，最后保存日志并汇总结果。** 下面讲的是本文固定的 Bazel 版本，具体命令接着看第 6～8 节。
+
+**第一步：确定本次实验用什么规模和参数。** 先确认初始集合规模 N、每轮更新规模 Nu，以及使用哪个 APSI JSON 文件。本版把 N、Nu 和 JSON 文件名写在 C++ 源码中，修改这些设置后需要重新编译。JSON 文件提供计算参数，不保存实验集合；结果目录的名字也不会改变程序实际使用的规模。
+
+**第二步：编译，生成可以运行的 `upsi`。** 在 YACL 根目录执行 Bazel 构建命令。Bazel 根据构建配置安排编译、链接，把 UPSI 源码及其依赖的 YACL、RR22、APSI、PSU 等组件构建成可执行程序，输出到 `bazel-bin/examples/upsi/upsi`。看到构建成功，只说明程序准备好了，此时还没有测出实验性能数据。
+
+**第三步：运行脚本，说明本次怎样测。** 例如要求 `run_benchmarks.sh` 使用 KRTW PSU 后端、BRPC 通信，测 LAN、WAN 200 Mbps、50 Mbps、5 Mbps，每种网络独立重复三次，每次程序执行一轮更新，并把结果保存到指定目录。脚本安排实验，实际协议计算由它启动的 `upsi` 完成。已经显式编译后，使用 `--skip-build` 让脚本直接运行现有程序。
+
+**第四步：脚本设置一种网络，启动一次程序。** 比如先设置 LAN：带宽 1 Gbps、往返延迟 0.2 ms，再启动 `upsi`。程序内部依次完成：
+
+1. **生成初始集合 X、Y**，并准备用于检查交集正确性的预期结果。
+2. **Setup：** 双方分别从自己的初始集合建立 APSI 数据库，为后续更新查询准备状态，记录 `Setup time`。这一步不计算双方的初始交集。
+3. **Base PSI：** 调用 RR22 对初始 X、Y 求交，记录 `Base PSI time` 和通信量，并检查初始交集是否正确。
+4. **更新：** 按照 Nu 生成新增、删除元素，维护双方 APSI 数据库，再调用 APSI、PSU 等组件更新交集，记录 `UPSI time` 和通信量，并检查更新结果。
+
+**第五步：重新启动程序，完成独立重复。** `--repeats=3` 表示每种网络重新执行三次完整流程；每次都会重新初始化，不沿用上一次的数据库和交集。若同时设置 `--update-count=1`，在同一种网络下执行的是：
+
+```text
+第 1 次：生成初始集合 → Setup → RR22 初始求交 → 更新 1 轮 → 退出
+第 2 次：生成初始集合 → Setup → RR22 初始求交 → 更新 1 轮 → 退出
+第 3 次：生成初始集合 → Setup → RR22 初始求交 → 更新 1 轮 → 退出
+```
+
+**第六步：切换网络，继续使用同一个程序。** LAN 测完三次后，脚本设置 WAN 200 Mbps，再测三次，接着测试 WAN 50 Mbps 和 WAN 5 Mbps。只改变网络条件，不需要重新编译。一个 KRTW 后端、四种网络、每种三次的正式批次，共启动 **12 次 `upsi`**；第 7.1 节单独做的 LAN 功能验证不计入这 12 次。
+
+**第七步：查看日志，整理实验数据。** 脚本保存每次运行的详细日志，并生成逐次记录和汇总文件。先检查成功、失败及交集正确性，再把有效结果整理进 Excel：
+
+| 要整理的内容 | 对应本地程序输出 |
+|---|---|
+| 表一：初始化时间 | 本地采用 `Setup time + Base PSI time`，与论文计时边界的区别见第 1.2 节 |
+| 表二：更新时间 | 使用 `UPSI time`，不再加初始化时间；本文默认一轮更新 |
+| 通信量和实验条件 | 记录相应阶段的通信量，以及实际 N、Nu、JSON、网络和线程设置 |
+| 重复运行结果 | 汇总成功样本，并保留失败次数和原因；脚本结束不代表每次都成功 |
+
+下一组若只换网络，继续运行同一个程序；若修改源码中的 N、Nu 或 JSON 文件名，就重新编译，再重复上述测量流程。后面的命令分别落实这些步骤。
+
 ## 6. 第一次编译：先生成能运行的程序
 
 在 **YACL 根目录**执行：
@@ -1000,7 +1038,7 @@ ulimit -c 0
 
 ## 参考资料与版本来源
 
-- [论文：Efficient Updatable PSI from Asymmetric PSI and PSU](https://ieeexplore.ieee.org/document/11361182)，实验环境与统计见 VI-A、VI-C 及表 I、II。本文依据论文与本地实际源码解释，不重新分发论文 PDF。
+- [论文：Efficient Updatable PSI from Asymmetric PSI and PSU](https://ieeexplore.ieee.org/document/11361182)，实验环境与统计见 V-A、V-C 及表 I、II。本文依据论文与本地实际源码解释，不重新分发论文 PDF。
 - [作者 UPSI 固定提交](https://github.com/ShallMate/upsi/tree/e3dd3731f29c791d686c464f6fe48979db025130)：本文的 `main.cc`、`upsi.cc`、APSI 包装、参数文件和脚本依据。
 - [作者 YACL 固定提交](https://github.com/ShallMate/yacl/tree/46d6137b297d9ac09fcb8401ddd89e705bcba175)：工作区、Bazel 构建配置和依赖声明。
 - [APSI v0.11.0](https://github.com/microsoft/APSI/tree/v0.11.0)：与本次构建对应的接口与参数背景，避免混用新版本文档。
